@@ -443,5 +443,3 @@ customize_graph(input=yearly_2006_dataset)
 # Merapikan dokumentasi: Dokumentasi interpretasi dan how to run (apalagi yang customized)
   # Code cell yang belum ada comment dan docstring, segera diisi yahh
 # Merapikan chart (title, spines, axvspan, dll.)
-
-# Setelah itu semua selesai, gas segera rilis ke GitHub!
