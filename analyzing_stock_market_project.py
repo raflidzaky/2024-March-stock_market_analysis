@@ -132,7 +132,11 @@ def skewness_value(input):
 skewness_value(input=dataset.iloc[:, 1:7])
 
 def kurtosis_value(input):
-
+  '''
+      This function triggers to check kurtosis value of each columns.
+      Hence, I do a for loop to count each column's kurtosis without any hard-code.
+      It is shown that the for loop address i-th column, which defined as the input (first until seventh columns)
+  '''
   for i in input:
     kurtosis = dataset[i].kurtosis(axis=None).round(3)
     print(i, ':', kurtosis)
@@ -152,7 +156,10 @@ Before jump to data visualization, I'd like to test whether the data are pure ra
 However, note that this test actually do not test whether the data have any trends/seasonalities. It just say that we have to investigate further if the p-value is higher than 0.05
 """
 
-dataset_columns = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
+# Take the columns' name as an array
+# Use this array to loop ADF test
+dataset_columns = dataset.iloc[:, 1:7].columns
+
 for i in dataset_columns:
   result = adfuller(dataset[i])
   print(i)
@@ -162,22 +169,38 @@ for i in dataset_columns:
   print('==========================')
 
 def millions_formatter(x, position):
+  '''
+      This function to re-scale the volume value in the x-axis. Since the volume has a vast number,
+      standard matplotlib graphics could not display the x-axis as it should. Hence, it needs to
+      be rescaled by a million unit.
+
+      This function will return the re-scaled value to be displayed in x-axis as position
+  '''
   x_val = int(x/1000000)
   return x_val
 
 
 def make_a_distribution_plot(input):
+  '''
+      This function mainly to plot distribution of each columns.
+      I state number of rows and columns in the figure directly, so that I didn't need to hard-code each graphics.
+
+      Here, note that there are 2 args on the for loop. Given the axes only accept integer/boolean, while
+      I also need each columns' name, I need to zip those two args. Hence, I could throw different values for
+      each looping: indexes and columns' name.
+  '''
   fig, axes = plt.subplots(nrows=3, ncols=2, figsize=[14, 7])
   fig.subplots_adjust(hspace=0.7)
   axes = axes.ravel()
 
-  for i, j in zip(range(len(dataset_columns)), dataset_columns):
+  for i, j in enumerate(dataset_columns):
     dataset[j].hist(ax=axes[i], grid=False)
-    axes[i].set_title(f'Distribution of {j}', fontweight='bold')
+    axes[i].set_title(f'Distribution of {j} Prices', fontweight='bold')
     axes[i].set_ylabel('Frequency')
     axes[i].set_xlabel('Value')
 
   axes[5].xaxis.set_major_formatter(FuncFormatter(millions_formatter))
+  axes[5].set_title('Distribution of Volume', fontweight='bold')
   axes[5].set_xlabel('Value (in Million)')
 
 make_a_distribution_plot(input=dataset)
@@ -192,6 +215,7 @@ This explains that prices (open, high, low, close, and adj. close) have a simila
 
 price_columns = ['Open', 'High', 'Low', 'Close', 'Adj Close']
 
+# Loop the correlation of 1st column to the ith column
 for pc in price_columns:
   correlation = dataset.corr()[pc].sort_values(ascending=False)
   print(correlation)
@@ -204,7 +228,8 @@ heatmap = sns.heatmap(dataset.corr(), vmin=-1, vmax=1, annot=False,
                       linecolor='white', linewidths=1, center=0)
 
 # Give a title to the heatmap. Pad defines the distance of the title from the top of the heatmap.
-heatmap.set_title('Correlation Heatmap', fontsize=30, fontweight='bold', pad=12)
+heatmap.set_title('Correlation Heatmap', fontsize=30,
+                  fontweight='bold', pad=12)
 
 """**Quick Interpretation**
 
@@ -228,11 +253,20 @@ def millions_formatter(x, position):
       return x_val
 
 def make_line_plot(input):
+  '''
+      The mechanism of this function is quite same as previous make_a_distribution_plot() function.
+      1. It requires two arguments
+      2. Re-scale the volume displayed in a specific axis
+
+      The differences are:
+      1. Using line plot to display trends
+      2. Set additional atributes (lines and areas) to show highlights
+  '''
   fig, axes = plt.subplots(nrows=3, ncols=2, figsize=[16, 7])
   fig.subplots_adjust(hspace=0.7)
   axes = axes.ravel()
 
-  for i, j in zip(range(len(dataset_columns)), dataset_columns):
+  for i, j in enumerate(dataset_columns):
     axes[i].plot(input['Date'], input[j])
     axes[i].set_title(f'{j} Fluctuations Over 2004-2016', fontweight='bold')
     axes[i].set_ylabel('Price Value')
@@ -246,7 +280,6 @@ def make_line_plot(input):
 
   axes[5].yaxis.set_major_formatter(FuncFormatter(millions_formatter))
   axes[5].set_ylim(0, 1500000000)
-  axes[5].xaxis.set_minor_formatter(plt.NullFormatter())
   axes[5].set_ylabel('Shares Traded (in Million)')
 
   return plt.show()
@@ -265,6 +298,7 @@ Note that the demand volume is very noisy. Even after the end of shaded area (wh
 
 quartiles = np.percentile(dataset['Volume'], [25, 50, 75])
 mu, sig = quartiles[1], 0.74 * (quartiles[2] - quartiles[0])
+# Query the dataset value which is NOT in the outside of pre-defined ranges
 lesser_noise_dataset = dataset.query(f'(Volume > @mu - 5 * @sig) & (Volume < @mu + 5 * @sig)')
 
 make_line_plot(input=lesser_noise_dataset)
@@ -274,45 +308,64 @@ make_line_plot(input=lesser_noise_dataset)
 However, note that graphic above does not shows cyclical patterns. Instead, prices' ups and downs kinda happen "randomly". We need to take a closer look for each component.
 """
 
+import matplotlib.pyplot as plt
+import pandas as pd
+
 def make_yearly_open_price(input):
-    fig, ax = plt.subplots(figsize=[15, 5])
-    years = input['Date'].dt.year.unique()
+'''
+      This function wants to zoom-in the line plot to a specific column. In this case, open price column.
+      However, I also need to label each line which in i-th year. For addition, I need to make the
+      color more aesthetic. Hence, I use color map (packs of colors) and index them to
+      label each year.
 
-    for y in years:
-        yearly_data = input[input['Date'].dt.year == y]
-        ax.plot(yearly_data['Date'], yearly_data['Open'], label=str(y))
+      For further reading about colormap, this documentation may help you:
+      https://matplotlib.org/stable/users/explain/colors/colormaps.html
 
-    ax.set_xlabel('Date')
-    ax.set_ylabel('Open Price')
-    ax.legend(title='Year',
-              frameon=False,
-              ncol=2)
-    ax.set_ylim(0, 70)
-    ax.set_xlim(pd.to_datetime('2003-10-01'), pd.to_datetime('2016-01-01'))
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+      I also add addtional description in the graphics, to add more highlights.
+'''
+  fig, ax = plt.subplots(figsize=[15, 5])
+  years = input['Date'].dt.year.unique()
+  cmap = plt.get_cmap('tab20b')
 
-    ax.text(pd.to_datetime('2003-10-01'), 75,
-            'Overall Open Price Trends',
-            fontdict={'size': 15,
-                      'weight': 'bold'})
+  for i, y in enumerate(years):
+    yearly_data = input[input['Date'].dt.year == y]
+    color = cmap(i / len(years))
+    ax.plot(yearly_data['Date'], yearly_data['Open'], label=str(y), color=color)
 
-    ax.text(pd.to_datetime('2003-10-01'), 71,
-            'Although Declining Trend and Differ Magnitudes, Open Price Kind of Having Cyclical Patterns Each Month',
-            fontdict={'size': 13},
-            alpha=0.7)
+  ax.set_xlabel('Date')
+  ax.set_ylabel('Open Price')
+  ax.legend(title='Year',
+            frameon=False,
+            ncol=2)
+  ax.set_ylim(0, 70)
+  ax.set_xlim(pd.to_datetime('2003-10-01'), pd.to_datetime('2016-01-01'))
+  ax.spines['top'].set_visible(False)
+  ax.spines['right'].set_visible(False)
 
-    return ax
+  ax.text(pd.to_datetime('2003-10-01'), 75,
+          'Overall Open Price Trends',
+          fontdict={'size': 15,
+                    'weight': 'bold'})
+
+  ax.text(pd.to_datetime('2003-10-01'), 71,
+          'Although Declining Trend and Differ Magnitudes, Open Price Kind of Having Cyclical Patterns Each Month',
+          fontdict={'size': 13},
+          alpha=0.7)
+
+  return ax
 
 make_yearly_open_price(input=dataset)
 
 def make_yearly_volume(input):
     fig, ax = plt.subplots(figsize=[15, 5])
     years = input['Date'].dt.year.unique()
+    cmap = plt.get_cmap('tab20b')
 
-    for y in years:
+    for i, y in enumerate(years):
         yearly_data = input[input['Date'].dt.year == y]
-        ax.plot(yearly_data['Date'], yearly_data['Volume'], label=str(y))
+        color = cmap(i / len(years))
+        ax.plot(yearly_data['Date'], yearly_data['Volume'],
+                label=str(y), color=color)
 
     ax.set_xlabel('Date')
     ax.set_ylabel('Volume Stocks Bought')
@@ -333,7 +386,7 @@ def make_yearly_volume(input):
                       'weight': 'bold'})
 
     ax.text(pd.to_datetime('2003-10-01'), 1420000000,
-            'There are Demand Boom Circa 2009 and then, Slowly but Surely, the Stock Demand Decline',
+            'There is a demand boom circa 2009 and then, slowly but surely, the stock demand decline',
             fontdict={'size': 13},
             alpha=0.7)
 
@@ -354,20 +407,59 @@ make_yearly_volume(input=dataset)
 ## Growth Analysis
 """
 
-open_price_growth = []
+def make_growth_dataframe(input):
+  '''
+      This function is iterating two things:
+      1. Iterate to calculate growth in each row (for a specified column)
+      2. Do such things to other columns
 
-for i in range(len(dataset['Open'])):
-    try:
-        growth = (dataset['Open'].iloc[i] - dataset['Open'].iloc[i-1]) / dataset['Open'].iloc[i-1]
-        growth_percentage = (growth * 100)
-        open_price_growth.append(round(growth_percentage, 2))
-    except ZeroDivisionError:
-        open_price_growth.append(0)
+      The results will be stored in a list first and then re-stored as dataframe
 
-# Tambahkan kolom 'Open Growth' ke dalam dataset
-dataset['Open Growth'] = open_price_growth
-dataset['Open Growth'].iloc[0] = 0.0
+      There are several things need to be highlighted:
+      1. First rows always result in zero growth (because no previous row),
+      2. After filling the first rows with zero value, continue to calculate
+      3. To avoid errors because of zero division (which resulted in undefined value),
+         I make a try-except Error Handling with specified instruction (append with 0).
+         Hence, no unnecessary ZeroDivision-related errors would happen.
+      4. There is two main local value:
+          a. growth: empty list to be filled with raw growth values
+          b. growth_data: transform the empty list to a data set with defined-column names
 
+      The flow of this function:
+      1. First, run the function with defined input.
+      2. Output of this function (growth_data) stored in an independent variable (growth_dataframe)
+
+      Such flow ease me to further manipulate the growth data (e.g. doing concatenation), since
+      variables in this function not stated in global environment.
+  '''
+  growth_data = pd.DataFrame()  # Create an empty DataFrame
+  for column_name in input:
+      growth = []  # Define growth list for each column
+
+      for j in range(len(dataset[column_name])):
+          if j == 0:
+            growth.append(0)
+          continue
+
+          try:
+              # Calculate growth
+              growth_value = (dataset[column_name].iloc[j] - dataset[column_name].iloc[j-1]) / dataset[column_name].iloc[j-1]
+              # Scale it to percentages
+              growth_percentage = growth_value * 100
+              # Limit to two decimals
+              growth.append(round(growth_percentage, 2))
+          except ZeroDivisionError:
+              growth.append(0)
+
+      growth_data[column_name + '_Growth'] = growth  # Add growth values to DataFrame
+
+  return growth_data
+
+
+growth_dataframe = make_growth_dataframe(input=dataset.iloc[:, 1:7])
+# Recursive: the dataset variable will be updated as concatenated values between itself and
+# -- growth_dataframe
+dataset = pd.concat([dataset, growth_dataframe], axis=1)
 dataset
 
 def make_yearly_open_growth(input):
@@ -376,13 +468,14 @@ def make_yearly_open_growth(input):
 
     for y in years:
         yearly_data = input[input['Date'].dt.year == y]
-        ax.plot(yearly_data['Date'], yearly_data['Open Growth'], label=str(y))
+        ax.plot(yearly_data['Date'], yearly_data['Volume_Growth'], label=str(y))
 
     ax.set_xlabel('Date')
     ax.set_ylabel('Open Price')
     ax.legend(title='Year',
-              ncol=2)
-    ax.set_ylim(-50, 50)
+              ncol=2,
+              frameon=False)
+    ax.set_ylim(-150, 700)
 
     return ax
 
@@ -438,8 +531,3 @@ def customize_graph(input):
     return ax
 
 customize_graph(input=yearly_2006_dataset)
-
-# TODO:
-# Merapikan dokumentasi: Dokumentasi interpretasi dan how to run (apalagi yang customized)
-  # Code cell yang belum ada comment dan docstring, segera diisi yahh
-# Merapikan chart (title, spines, axvspan, dll.)
