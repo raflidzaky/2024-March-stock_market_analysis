@@ -520,7 +520,7 @@ def customize_graph(input):
     ax.set_ylabel(input.columns[1])
     ax.set_ylim(0, 70)
 
-    # Ambil tahun pertama dari data
+    # Delete i+1 year in the axis.
     first_year = input['Date'].dt.year.unique()[0]
     ax.set_xlim(pd.Timestamp(f'{first_year}-01-01'), pd.Timestamp(f'{first_year}-12-31'))
 
