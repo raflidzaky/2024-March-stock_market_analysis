@@ -111,6 +111,7 @@ Outlier analysis is not included in this project. Why? Since I use time-series d
 ## Generic Analysis
 """
 
+
 dataset.describe()
 
 def skewness_value(input):
@@ -296,22 +297,28 @@ There are four aspect that quite interesting:
 Note that the demand volume is very noisy. Even after the end of shaded area (which the prices started to rise), the demand not consistently show a declining trend (noisy ups and downs)
 """
 
-quartiles = np.percentile(dataset['Volume'], [25, 50, 75])
-mu, sig = quartiles[1], 0.74 * (quartiles[2] - quartiles[0])
-# Query the dataset value which is NOT in the outside of pre-defined ranges
-lesser_noise_dataset = dataset.query(f'(Volume > @mu - 5 * @sig) & (Volume < @mu + 5 * @sig)')
+def denoising_the_data(data, column):
+  '''
+      This function performs as denoising operators. The logic is simple:
+      It will query the data if the defined column has greater value than
+      (mean - 5 * standard deviation) and lesser value than (mean + 5 * standard deviation).
+      Hence, it will show data with no 'boom'-like values
+  '''
+    quartiles = np.percentile(data[column], [25, 50, 75])
+    mu, sig = quartiles[1], 0.74 * (quartiles[2] - quartiles[0])
+    # Query the dataset value which is NOT in the outside of pre-defined ranges
+    lesser_noise_dataset = data.query(f'({column} > @mu - 5 * @sig) & ({column} < @mu + 5 * @sig)')
+    return lesser_noise_dataset
 
-make_line_plot(input=lesser_noise_dataset)
+denoising_the_data(data=dataset, column='Volume')
+
+make_line_plot(input=denoising_the_data(data=dataset, column='Volume'))
 
 """Again, after denoising the data, we got the same volume behavior as above. The peak demand does not located where the price is the lowest. Also, demand increases significantly where the price also decline significantly (located somewhere in between 2008 and 2010).
 
 However, note that graphic above does not shows cyclical patterns. Instead, prices' ups and downs kinda happen "randomly". We need to take a closer look for each component.
 """
 
-import matplotlib.pyplot as plt
-import pandas as pd
-
-def make_yearly_open_price(input):
 '''
       This function wants to zoom-in the line plot to a specific column. In this case, open price column.
       However, I also need to label each line which in i-th year. For addition, I need to make the
@@ -323,6 +330,11 @@ def make_yearly_open_price(input):
 
       I also add addtional description in the graphics, to add more highlights.
 '''
+
+import matplotlib.pyplot as plt
+import pandas as pd
+
+def make_yearly_open_price(input):
   fig, ax = plt.subplots(figsize=[15, 5])
   years = input['Date'].dt.year.unique()
   cmap = plt.get_cmap('tab20b')
@@ -342,15 +354,22 @@ def make_yearly_open_price(input):
   ax.spines['top'].set_visible(False)
   ax.spines['right'].set_visible(False)
 
+  ax.axvspan('2008-01-01', '2008-12-31',
+             color='gray', alpha=0.1)
+
   ax.text(pd.to_datetime('2003-10-01'), 75,
           'Overall Open Price Trends',
           fontdict={'size': 15,
                     'weight': 'bold'})
-
   ax.text(pd.to_datetime('2003-10-01'), 71,
-          'Although Declining Trend and Differ Magnitudes, Open Price Kind of Having Cyclical Patterns Each Month',
+          'Since economic recession in 2008, the stock price never reach pre-2008 level again',
           fontdict={'size': 13},
           alpha=0.7)
+  ax.text(pd.to_datetime('2007-07-01'), 55,
+          '2008 Economic Recession',
+          fontdict={'size': 13},
+          alpha=0.7)
+
 
   return ax
 
@@ -403,6 +422,7 @@ make_yearly_volume(input=dataset)
   - In the other hand, 2008 and 2011 have their peaks in last half of year.
   - **It is implied that no clear monthly pattern over years**
 4. I assume I need to see a closer look on each year's volume. Such decision will let me to see their monthly behavior.
+5. Although price in 2008 droped significantly than 2009, it is shown that demand boom was not in 2008. We knows that people, although demand for "lower price", they still "wait and see" the condition: waiting for economic certainty for any investment.
 
 ## Growth Analysis
 """
@@ -426,21 +446,19 @@ def make_growth_dataframe(input):
           b. growth_data: transform the empty list to a data set with defined-column names
 
       The flow of this function:
-      1. First, run the function with defined input.
-      2. Output of this function (growth_data) stored in an independent variable (growth_dataframe)
-
-      Such flow ease me to further manipulate the growth data (e.g. doing concatenation), since
-      variables in this function not stated in global environment.
+      1. First, for each row pointed, it calculate the column's row growth
+      2. The values will be thrown at temporal list variable: growth
+      3. Then, it'll make a dataframe variable (growth_data) with growth variable as the value
+      4. Since, the first rows somehow still not zero-value, it needs a hard code by
+         directly change the value
+      5. The function is running with defined input and it is stored inside growth_dataframe
   '''
-  growth_data = pd.DataFrame()  # Create an empty DataFrame
+  # Create an empty DataFrame
+  growth_data = pd.DataFrame()
   for column_name in input:
-      growth = []  # Define growth list for each column
-
+      # Define growth list for each column
+      growth = []
       for j in range(len(dataset[column_name])):
-          if j == 0:
-            growth.append(0)
-          continue
-
           try:
               # Calculate growth
               growth_value = (dataset[column_name].iloc[j] - dataset[column_name].iloc[j-1]) / dataset[column_name].iloc[j-1]
@@ -450,45 +468,93 @@ def make_growth_dataframe(input):
               growth.append(round(growth_percentage, 2))
           except ZeroDivisionError:
               growth.append(0)
-
-      growth_data[column_name + '_Growth'] = growth  # Add growth values to DataFrame
-
+      # Add growth values to DataFrame
+      growth_data[column_name + '_Growth'] = growth
+      growth_data.iloc[0:1, 0:7]  = 0.0
   return growth_data
 
-
+# Make growth data set first
 growth_dataframe = make_growth_dataframe(input=dataset.iloc[:, 1:7])
-# Recursive: the dataset variable will be updated as concatenated values between itself and
-# -- growth_dataframe
 dataset = pd.concat([dataset, growth_dataframe], axis=1)
 dataset
+
+dataset.iloc[:, 7:13].describe()
+
+"""There is one interesting dynamics here, it is volume growth.
+We can see that the standard deviation is the highest amongst other columns. It means that volume growth had a huge fluctuation. It is also proven that the gap between max. and min in volume growth is relatively higher amongst other.
+
+This is an aptitude of insights: volume growth does not ONLY driven by price. Why? We could compare the price and volume growth's variations. Although price was varying in this data set, there are kind of "multiplier" that affects volume growth. I think, that multipliers are sentiment, business actions, panic selling, or even fear of missing out.
+
+The last two multiplier factors are a hypothesis from previous visualization: price peak and valley.
+"""
 
 def make_yearly_open_growth(input):
     fig, ax = plt.subplots(figsize=[14, 5])
     years = input['Date'].dt.year.unique()
+    cmap = plt.get_cmap('tab20b')
 
-    for y in years:
+    for i, y in enumerate(years):
         yearly_data = input[input['Date'].dt.year == y]
-        ax.plot(yearly_data['Date'], yearly_data['Volume_Growth'], label=str(y))
+        color = cmap(i / len(years))
+        ax.plot(yearly_data['Date'], yearly_data['Open_Growth'],
+                label=str(y), color=color)
 
     ax.set_xlabel('Date')
     ax.set_ylabel('Open Price')
     ax.legend(title='Year',
               ncol=2,
               frameon=False)
-    ax.set_ylim(-150, 700)
+    ax.set_ylim(-50, 50)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    ax.text(pd.to_datetime('2003-06-01'), 60,
+            'Dynamics of Open Prices Growth',
+            fontdict={
+                        'weight': 'bold',
+                        'size': 14
+                      }
+            )
+    ax.text(pd.to_datetime('2003-06-01'), 53,
+            'There is price boom in 2008-2009, however, monthly or weekly cycle need to be investigated',
+            fontdict={
+                        'weight': 'bold',
+                        'size': 12
+                      },
+            alpha=0.7
+            )
 
     return ax
 
 make_yearly_open_growth(input=dataset)
 
-"""## Graphics Customization"""
+"""## Graphics Customization
 
-# Buat data set baru yearly
-# Ini menghasilkan semua tahun sih btw
-yearly_dataset = {} # Ini datanya kita simpan as hashmap.
+Motivation:
+Since previous is likely showing us no clear patterns, we need to zoom-in to see if it really no patterns at all (monthly or weekly).
+
+However, since we are gonna observe/manipulate a lot of columns and years, it require an algorithm to extract the column and year.
+"""
+
+# Make a hashmap to map the data in each yearly key.
+# For example, key '2015' will store all of the column with 2015 as a year
+yearly_dataset = {}
+
+# This line is user-defined input
+# Suppose user wanna see 'Open' column, hence this input gonna move on make_a_yearly_dataset() function
 input_column = input(str())
 
 def make_a_yearly_dataset(input):
+  '''
+      This function do several things:
+      1. First, it extracts data set's column based on user-defined input
+      2. Second, each column initially has years span from 2004-2015. Each year will
+         be mapped in each dictionary. This mapping process is done by getting the
+         key's args which are years.
+      3. Third, the function return the result. It will show 2015 since it is the
+         latest active session in this for loop (2015 is the latest year in this
+         data set)
+  '''
   years = (dataset['Date'].dt.year).unique()
 
   for y in years:
@@ -498,17 +564,38 @@ def make_a_yearly_dataset(input):
 
 make_a_yearly_dataset(input=input_column)
 
-# Buat variabel baru untuk per data set baru
-# Caveat gede sih kalo mau clone. Jangan di VSCode, RAM mbledos boss
 def extract_yearly_data(input):
+  '''
+      This function objective is mapping each year key in yearly_dataset variable
+      to a variable. Hence, user could explore the zoomed-in [monthly] data in a
+      preferred year. The mechanisms of this function are stated below.
+      1. At every year in the input (which is yearly_dataset), there will be a
+         global variable named 'yearly_year_dataset'
+      2. After looping process is done, the function will return 11 years (from
+         2004-2015).
+      3. The index would not follow previous index in data set. Instead, it will
+         return new index, from 0 incrementally to n-index.
+      4. User could use whatever year he/she/they wanted to explore more.
+      5. If we show the result of this function, it will show the column that has defined in
+         input_column variable. For example, if user choose 'Open' in input_column,
+         this function will return 'Open'.
+
+      Caveats: this function may perform slow if you clone this in your local code editor.
+      Why? all of the variables in this function will be stored in your local memory.
+  '''
   for year in range(2004, 2016):
-    globals()[f'yearly_{year}_dataset'] = input[year]
+    globals()[f'yearly_{year}_dataset'] = input[year].reset_index(drop=True)
 
   return globals()[f'yearly_{year}_dataset']
 
 extract_yearly_data(input=yearly_dataset)
 
-yearly_2007_dataset
+# If user prefer 2015, user could type 2015 in the middle of yearly_(year)_dataset
+yearly_2015_dataset
+
+yearly_2015_dataset.describe()
+
+"""From descriptive statistics above, we can see that open price in 2015 is relatively stable. Look that the standard deviation below 1. The difference between min and max value does not enpicture a high gap."""
 
 # We need to take a closer look. We could zoom in a certain year (for example, we can specify 2007)
 
@@ -516,18 +603,46 @@ def customize_graph(input):
     fig, ax = plt.subplots(figsize=[14, 5])
     ax.plot(input.iloc[:, 0], input.iloc[:, 1])
 
-    ax.set_xlabel('Date')
-    ax.set_ylabel(input.columns[1])
-    ax.set_ylim(0, 70)
+    year = input['Date'].dt.year[0]
+    ax.set_xlabel(f"Date in {year}",
+                  fontweight='bold')
+    ax.set_ylabel(input.columns[1],
+                  fontweight='bold')
+    # If user define yearly_2007_dataset instead, user could change this ax.text
+      # -- args to n-1 year, 2006-12-31
+    ax.text(pd.to_datetime('2014-12-31'), 20.5,
+            f'Dynamics of {input.columns[1]} in {year}',
+            fontdict={
+                      'size': 14,
+                      'weight': 'bold'
+                      })
 
-    # Delete i+1 year in the axis.
-    first_year = input['Date'].dt.year.unique()[0]
-    ax.set_xlim(pd.Timestamp(f'{first_year}-01-01'), pd.Timestamp(f'{first_year}-12-31'))
+    # Limit the figure's x-axis to the given year
+    # For example, if the given year is 2015, it shows 2015-01-01 until 2015-12-31
+      # -- not 2016-01-01
+    first_year = input['Date'].dt.year[0]
+    ax.set_xlim(pd.Timestamp(f'{first_year}-01-01'),
+                pd.Timestamp(f'{first_year}-12-31'))
+    ax.set_ylim(10, 20)
 
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    # To show both month and day, it needs two ticks
+    # First, the minor one, will show a day, specifically 5-th day
+    # Second, the major one, will show a month
     ax.xaxis.set_minor_locator(mpl.dates.MonthLocator(bymonthday=5))
     ax.xaxis.set_major_formatter(plt.NullFormatter())
     ax.xaxis.set_minor_formatter(mpl.dates.DateFormatter('%m-%d'))
 
     return ax
 
-customize_graph(input=yearly_2006_dataset)
+customize_graph(input=yearly_2015_dataset)
+
+"""# **Conclusion**
+1. Although no specific monthly pattern both in price components and volume (demand), we know there was a bigger story: the effects of 2008 economic recession.
+2. The price and demand didn't respond each other simultaneously at the same time. Instead, there were a lot of lagging response in this case.
+3. Prices were not the only factor to drive demand, there are also sentiments.
+
+There are also a story that I didn't show yet: 2-in-1 stock split in 2004. Although no significant effects, compared to 2008 economic recession, surely it has an impact (particularly monthly impact), though.
+"""
