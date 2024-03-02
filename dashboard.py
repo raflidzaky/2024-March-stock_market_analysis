@@ -83,4 +83,4 @@ if uploaded_file is not None:
                   )
 
 else:
-  st.markdown('**Before continue to dashboard, please upload the dataframe first :D**')
+  st.markdown('**Before continue to dashboard, please upload the data set first :D**')
