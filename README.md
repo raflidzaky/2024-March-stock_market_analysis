@@ -18,9 +18,37 @@ While this Streamlit Dashboard will interactively show trends of specified timef
 </br>
 ![](https://img.shields.io/badge/Lib-Streamlit-informational?style=flat&logo=Streamlit&color=7952B3)
 
-## Input settings
+## Settings
 Several things for consideration: data set, cloning the projects, and running engine for dashboard
 ### Data set
+You can either download ```dataset_full.csv``` (already clean) or follow these steps for raw data (on your Jupyter Notebook or Google Colab):
+```
+  # Install the yfinance API
+  !pip install yfinance
 
+  # Import the library
+  import yfinance as yf
+  dataset = yf.download('BAC', start='2004-01-01', end='2016-01-01')
+  dataset
+```
+### Cloning the projects
+You can clone this project to run locally using Git. However, note you do not need to push it in this branch. Just do on your own local environment and push on your own Git branches! :D
+```
+$git config --local user.name "your-display-name"
+$git clone https://github.com/raflidzaky/2024-March-stock_market_analysis
+$dir 
+$cd 2024-March-stock_market_analysis
+```
 
-Released soon
+### Running engine
+You need an engine to showcase pre-deployed dashboard. Here's how (you could write in Jupyter Notebook or Google Colab)
+```
+  !pip install streamlit
+
+  # Initialize file for writing streamlit dashboard
+  %%writefile whatever_name.py
+
+  # Run streamlit based on the file on whatever_name.py
+  # And run it in localtunnel
+  !streamlit run whatever_name.py & npx localtunnel --port your_port_number
+```
