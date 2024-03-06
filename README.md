@@ -4,7 +4,9 @@ there are two outputs of this project:
 
 <a href="https://colab.research.google.com/drive/15hujoJHjhT_T93XSk5qri5erxF6oAxpJ#scrollTo=kYarLAzOVOA0"><img align="left" src="https://github.com/raflidzaky/2024-March-stock_market_analysis/assets/104545005/3827e863-b0f8-437d-b29e-979c034f1350" alt="Google Colab Project" width="21px"/></a>  [**Google Colab Notebook**](https://colab.research.google.com/drive/15hujoJHjhT_T93XSk5qri5erxF6oAxpJ#scrollTo=kYarLAzOVOA0)
 
-This colab notebook contains detailed thought process, descriptive statistics, and logical reasoning why certain occurences occur. 
+This colab notebook contains detailed thought process (raw code), descriptive statistics, and logical reasoning why certain occurences occur. 
+You can see analyzing_stock_market_project.py for raw code only (without outputs)
+
 
 <a href="https://2024-march-stockmarketanalysis.streamlit.app"><img align="left" src="https://github.com/raflidzaky/2024-March-stock_market_analysis/assets/104545005/81af49e7-1a07-4e61-8404-3b864343b6e3" alt="Google Colab Project" width="21px"/></a>  [**Streamlit Dashboard**](https://2024-march-stockmarketanalysis.streamlit.app/)
 
