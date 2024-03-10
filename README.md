@@ -15,11 +15,13 @@ While this Streamlit Dashboard will interactively show trends of specified timef
 ## Tech stacks
 ![](https://img.shields.io/badge/Language-Python-informational?style=flat&logo=Python&color=FFD700)
 </br>
-![](https://img.shields.io/badge/Lib-Numpy-informational?style=flat&logo=Numpy&color=87CEEB)
 ![](https://img.shields.io/badge/Lib-Pandas-informational?style=flat&logo=Pandas&color=FFA500)
 ![](https://img.shields.io/badge/Lib-Plotly-informational?style=flat&logo=Plotly&color=FFC0CB)
 ![](https://img.shields.io/badge/Lib-Streamlit-informational?style=flat&logo=Streamlit&color=FF0000)
 </br>
+
+**Notes:** Pandas are used as it accounts for [Bessel Correction](https://www.statisticshowto.com/bessels-correction/) on its standar deviation calculation. Thus, it 
+fits for this project context that uses sample data.
 
 ## Settings
 Several things for consideration: **data set**, **cloning the projects**, and **running engine for dashboard**
